@@ -5,7 +5,7 @@ const Admin = require('./models/Admin');
 const seedAdmin = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    
+
     // Check if admin exists
     const adminExists = await Admin.findOne({ username: 'admin' });
     if (adminExists) {

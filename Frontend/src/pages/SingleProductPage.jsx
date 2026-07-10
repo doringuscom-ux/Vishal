@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, Phone, Mail, ArrowRight, Shield, Award, PenTool } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Phone, Mail, ArrowRight, Shield, Award, PenTool, X } from 'lucide-react';
 import axios from 'axios';
 import { Helmet } from 'react-helmet-async';
-import { PRODUCTS_API } from '../utils/api';
+import { PRODUCTS_API, CONTACT_API } from '../utils/api';
 import NotFoundPage from './NotFoundPage';
 
 
@@ -14,6 +14,42 @@ export default function SingleProductPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Quote Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    message: ''
+  });
+  const [submitStatus, setSubmitStatus] = useState({ loading: false, success: false, error: '' });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleQuoteSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitStatus({ loading: true, success: false, error: '' });
+    try {
+      const finalMessage = `Quote Request for Product: ${product.name}\n\nAdditional Message: ${formData.message}`;
+      await axios.post(CONTACT_API, {
+        ...formData,
+        message: finalMessage
+      });
+      setSubmitStatus({ loading: false, success: true, error: '' });
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setSubmitStatus({ loading: false, success: false, error: '' });
+        setFormData({ firstName: '', lastName: '', email: '', phone: '', message: '' });
+      }, 3000);
+    } catch (err) {
+      setSubmitStatus({ loading: false, success: false, error: err.response?.data?.message || 'Failed to submit request' });
+    }
+  };
 
   // Scroll to top on mount and fetch product
   useEffect(() => {
@@ -56,7 +92,7 @@ export default function SingleProductPage() {
   const metaRobots = product.metaRobots || 'index, follow';
 
   return (
-    <div className="bg-[#f8f9fa] min-h-screen pb-20 pt-24 md:pt-32">
+    <div className="bg-[#f8f9fa] min-h-screen pb-20 pt-24 md:pt-8">
       <Helmet>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDescription} />
@@ -80,9 +116,9 @@ export default function SingleProductPage() {
           <div className="flex flex-col lg:flex-row">
             
             {/* Left: Image Gallery */}
-            <div className="w-full lg:w-1/2 p-6 md:p-10 lg:border-r border-gray-100 bg-gray-50/50">
+            <div className="w-full lg:w-5/12 p-6 md:p-10 lg:border-r border-gray-100 bg-gray-50/50 flex flex-col items-center">
               {/* Main Image */}
-              <div className="relative aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 mb-6 group">
+              <div className="relative w-full max-w-sm aspect-square rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 mb-6 group">
                 <img 
                   src={product.images && product.images.length > 0 ? product.images[activeImage] : product.image} 
                   alt={product.name} 
@@ -91,7 +127,7 @@ export default function SingleProductPage() {
               </div>
               
               {/* Thumbnails */}
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide justify-center w-full">
                 {product.images ? product.images.map((img, idx) => (
                   <button 
                     key={idx}
@@ -107,7 +143,7 @@ export default function SingleProductPage() {
             </div>
 
             {/* Right: Product Details */}
-            <div className="w-full lg:w-1/2 p-6 md:p-10 lg:p-12 flex flex-col">
+            <div className="w-full lg:w-7/12 p-6 md:p-10 lg:p-12 flex flex-col">
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[#0c2444] mb-6 tracking-tight leading-tight">
                 {product.name}
               </h1>
@@ -143,12 +179,12 @@ export default function SingleProductPage() {
                     <p className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">Pricing</p>
                     <p className="text-2xl font-black text-[#0c2444]">Request Quote</p>
                   </div>
-                  <Link 
-                    to="/contact" 
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
                     className="w-full sm:w-auto bg-[#1a56db] hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold transition-colors shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
                   >
                     Request a Quote <ArrowRight className="w-5 h-5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -186,6 +222,64 @@ export default function SingleProductPage() {
         </div>
 
       </div>
+
+      {/* Quote Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="bg-[#0c2444] p-6 flex justify-between items-center text-white">
+              <h3 className="text-xl md:text-2xl font-bold">Request Quote for {product.name}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white p-2">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 md:p-8">
+              {submitStatus.success ? (
+                <div className="text-center py-10">
+                  <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h4 className="text-2xl font-bold text-[#0c2444] mb-2">Request Sent!</h4>
+                  <p className="text-gray-600">We will get back to you with the quote shortly.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleQuoteSubmit} className="space-y-4 text-left">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">First Name *</label>
+                      <input required type="text" name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1a56db] focus:ring-2 focus:ring-[#1a56db]/20 outline-none transition-all" placeholder="John" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Last Name *</label>
+                      <input required type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1a56db] focus:ring-2 focus:ring-[#1a56db]/20 outline-none transition-all" placeholder="Doe" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Email Address *</label>
+                      <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1a56db] focus:ring-2 focus:ring-[#1a56db]/20 outline-none transition-all" placeholder="john@example.com" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Phone Number *</label>
+                      <input required type="tel" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1a56db] focus:ring-2 focus:ring-[#1a56db]/20 outline-none transition-all" placeholder="+91 98765 43210" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Additional Requirements</label>
+                    <textarea name="message" value={formData.message} onChange={handleInputChange} rows="4" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1a56db] focus:ring-2 focus:ring-[#1a56db]/20 outline-none transition-all resize-none" placeholder="Tell us about quantity, specifications, etc."></textarea>
+                  </div>
+                  
+                  {submitStatus.error && <p className="text-red-500 text-sm font-medium">{submitStatus.error}</p>}
+                  
+                  <button type="submit" disabled={submitStatus.loading} className="w-full bg-[#1a56db] hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-colors disabled:opacity-70 flex items-center justify-center">
+                    {submitStatus.loading ? 'Sending...' : 'Submit Request'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
